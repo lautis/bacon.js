@@ -1,13 +1,16 @@
-(this.jQuery || this.Zepto)?.fn.asEventStream = (eventName, selector) ->
+(this.jQuery || this.Zepto)?.fn.asArrayEventStream = (eventName, selector) ->
   element = this
   new EventStream (sink) ->
-    handler = (event) ->
-      reply = sink (next event)
+    handler = (args...) ->
+      reply = sink (next args)
       if (reply == Bacon.noMore)
         unbind()
     unbind = -> element.off(eventName, selector, handler)
     element.on(eventName, selector, handler)
     unbind
+
+(this.jQuery || this.Zepto)?.fn.asEventStream = (eventName, selector) ->
+  @asArrayEventStream(eventName, selector).map (args) -> _.head args
 
 Bacon = @Bacon = {}
 
