@@ -883,75 +883,70 @@ addPropertyInitValueToStream = (property, stream) ->
   justInitValue.concat(stream).toProperty()
 
 class Dispatcher
-  constructor: (subscribe, handleEvent) ->
-    subscribe ?= -> nop
-    subscriptions = []
-    queue = []
-    pushing = false
-    ended = false
-    @hasSubscribers = -> subscriptions.length > 0
-    prevError = null
-    unsubscribeFromSource = nop
-    removeSub = (subscription) ->
-      subscriptions = _.without(subscription, subscriptions)
-    waiters = null
-    done = ->
-      if waiters?
-        ws = waiters
-        waiters = null
-        w() for w in ws
-    pushIt = (event) ->
-      if not pushing
-        return if event is prevError
-        prevError = event if event.isError()
+  constructor: (@subscribe_ = (-> nop), @handleEvent_ = ((event) -> @push event)) ->
+    @subscriptions = []
+    @queue = []
+    @unsubscribeFromSource = nop
+    @pushing = false
+  done: ->
+    if @waiters?
+      ws = @waiters
+      @waiters = null
+      w() for w in ws
+  pushIt: (event) ->
+      if not @pushing
+        return if event is @prevError
+        @prevError = event if event.isError()
         success = false
         try
-          pushing = true
-          tmp = subscriptions
+          @pushing = true
+          tmp = @subscriptions
           for sub in tmp
             reply = sub.sink event
-            removeSub sub if reply == Bacon.noMore or event.isEnd()
+            @removeSub sub if reply == Bacon.noMore or event.isEnd()
           success = true
         finally
-          pushing = false
-          queue = [] unless success # ditch queue in case of exception to avoid unexpected behavior
+          @pushing = false
+          @queue = [] unless success # ditch queue in case of exception to avoid unexpected behavior
         success = true
-        while queue.length
-          event = queue.shift()
+        while @queue.length
+          event = @queue.shift()
           @push event
-        done(event)
+        @done(event)
         if @hasSubscribers()
           Bacon.more
         else
-          unsubscribeFromSource()
+          @unsubscribeFromSource()
           Bacon.noMore
       else
-        queue.push(event)
+        @queue.push(event)
         Bacon.more
-    @push = (event) =>
-      UpdateBarrier.inTransaction event, this, pushIt, [event]
-    handleEvent ?= (event) -> @push event
-    @handleEvent = (event) =>
-      if event.isEnd()
-        ended = true
-      handleEvent.apply(this, [event])
-    @subscribe = (sink) =>
-      if ended
-        sink end()
-        nop
-      else
-        assertFunction sink
-        subscription = { sink: sink }
-        subscriptions.push(subscription)
-        if subscriptions.length == 1
-          unsubSrc = subscribe @handleEvent
-          unsubscribeFromSource = ->
-            unsubSrc()
-            unsubscribeFromSource = nop
-        assertFunction unsubscribeFromSource
-        =>
-          removeSub subscription
-          unsubscribeFromSource() unless @hasSubscribers()
+  removeSub: (subscription) ->
+      @subscriptions = _.without(subscription, @subscriptions)
+  hasSubscribers: => @subscriptions.length > 0
+  push: (event) =>
+    UpdateBarrier.inTransaction event, this, @pushIt, [event]
+  handleEvent: (event) =>
+    if event.isEnd()
+      @ended = true
+    @handleEvent_(event)
+  subscribe: (sink) =>
+    if @ended
+      sink end()
+      nop
+    else
+      assertFunction sink
+      subscription = { sink: sink }
+      @subscriptions.push(subscription)
+      if @subscriptions.length == 1
+        unsubSrc = @subscribe_ @handleEvent
+        @unsubscribeFromSource = ->
+          unsubSrc()
+          @unsubscribeFromSource = nop
+      assertFunction @unsubscribeFromSource
+      =>
+        @removeSub subscription
+        @unsubscribeFromSource() unless @hasSubscribers()
 
 class PropertyDispatcher extends Dispatcher
   constructor: (p, subscribe, handleEvent) ->
