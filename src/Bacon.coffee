@@ -862,10 +862,9 @@ class Property extends Observable
     withDescription(this, "sample", interval,
       @sampledBy Bacon.interval(interval, {}))
 
-  changes: -> new EventStream describe(this, "changes"), (sink) =>
-    @dispatcher.subscribe (event) ->
-      #console.log "CHANGES", event.toString()
-      sink event unless event.isInitial()
+  changes: ->
+    new EventStream describe(this, "changes"), @dispatcher, (event) ->
+      @push event unless event.isInitial()
 
   withHandler: (handler) ->
     new Property describe(this, "withHandler", handler), @dispatcher, handler
@@ -875,10 +874,9 @@ class Property extends Observable
     this
 
   toEventStream: ->
-    new EventStream describe(this, "toEventStream"), (sink) =>
-      @dispatcher.subscribe (event) ->
-        event = event.toNext() if event.isInitial()
-        sink event
+    new EventStream describe(this, "toEventStream"), @dispatcher, (event) ->
+      event = event.toNext() if event.isInitial()
+      @push event
 
   and: (other) -> withDescription(this, "and", other, @combine(other, (x, y) -> x and y))
 
