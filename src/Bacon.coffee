@@ -1011,11 +1011,8 @@ class PropertyDispatcher extends Dispatcher
     super(subscribe, handleEvent)
     @current = None
     @currentValueRootId = undefined
-    @propertyEnded = false
 
   push: (event) ->
-    if event.isEnd()
-      @propertyEnded = true
     if event.hasValue()
       @current = new Some(event)
       @currentValueRootId = UpdateBarrier.currentEventId()
@@ -1024,7 +1021,7 @@ class PropertyDispatcher extends Dispatcher
   maybeSubSource: (sink, reply) ->
     if reply == Bacon.noMore
       nop
-    else if @propertyEnded
+    else if @ended
       sink end()
       nop
     else
@@ -1038,11 +1035,11 @@ class PropertyDispatcher extends Dispatcher
     # after the first one
     reply = Bacon.more
 
-    if @current.isDefined and (@hasSubscribers() or @propertyEnded)
+    if @current.isDefined and (@hasSubscribers() or @ended)
       # should bounce init value
       dispatchingId = UpdateBarrier.currentEventId()
       valId = @currentValueRootId
-      if !@propertyEnded and valId and dispatchingId and dispatchingId != valId
+      if !@ended and valId and dispatchingId and dispatchingId != valId
         # when subscribing while already dispatching a value and this property hasn't been updated yet
         # we cannot bounce before this property is up to date.
         #console.log "bouncing with possibly stale value", event.value(), "root at", valId, "vs", dispatchingId
