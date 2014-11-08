@@ -1192,6 +1192,16 @@ class Desc
 withDescription = (desc..., obs) ->
   describe(desc...).apply(obs)
 
+matchPat = (sources, p) ->
+  for i in p.ixs
+    unless sources[i.index].hasAtLeast(i.count)
+      return false
+  return true
+
+nonFlattened = (trigger) -> !trigger.source.flatten
+cannotSync = (source) -> !source.sync or source.ended
+flushLater = (resultStream, flush) -> UpdateBarrier.whenDoneWith(resultStream, flush)
+
 Bacon.when = ->
   return Bacon.never() if arguments.length == 0
   len = arguments.length
@@ -1232,27 +1242,20 @@ Bacon.when = ->
   resultStream = new EventStream describe(Bacon, "when", patterns...), (sink) ->
     triggers = []
     ends = false
-    match = (p) ->
-      for i in p.ixs
-        unless sources[i.index].hasAtLeast(i.count)
-          return false
-      return true
-    cannotSync = (source) ->
-      !source.sync or source.ended
-    cannotMatch = (p) ->
-      for i in p.ixs
-        unless sources[i.index].mayHave(i.count)
-          return true
-    nonFlattened = (trigger) -> !trigger.source.flatten
+
+    cannotMatch = (sources) ->
+      (p) ->
+        for i in p.ixs
+          unless sources[i.index].mayHave(i.count)
+            return true
+
     part = (source) -> (unsubAll) ->
-      flushLater = ->
-        UpdateBarrier.whenDoneWith resultStream, flush
       flushWhileTriggers = ->
         if triggers.length > 0
           reply = Bacon.more
           trigger = triggers.pop()
           for p in pats
-            if match(p)
+            if matchPat(sources, p)
               #console.log "match", p
               events = (sources[i.index].consume() for i in p.ixs)
               reply = sink trigger.e.apply ->
@@ -1271,7 +1274,7 @@ Bacon.when = ->
         reply = flushWhileTriggers()
         if ends
           ends = false
-          if  _.all(sources, cannotSync) or _.all(pats, cannotMatch)
+          if  _.all(sources, cannotSync) or _.all(pats, cannotMatch(sources))
             reply = Bacon.noMore
             sink end()
         unsubAll() if reply == Bacon.noMore
@@ -1281,7 +1284,7 @@ Bacon.when = ->
         if e.isEnd()
           ends = true
           source.markEnded()
-          flushLater()
+          flushLater(resultStream, flush)
         else if e.isError()
           reply = sink e
         else
@@ -1289,7 +1292,7 @@ Bacon.when = ->
           if source.sync
             #console.log "queuing", e.toString(), _.toString(resultStream)
             triggers.push {source: source, e: e}
-            if needsBarrier or UpdateBarrier.hasWaiters() then flushLater() else flush()
+            if needsBarrier or UpdateBarrier.hasWaiters() then flushLater(resultStream, flush) else flush()
         unsubAll() if reply == Bacon.noMore
         reply or Bacon.more
 
