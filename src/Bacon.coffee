@@ -508,7 +508,8 @@ class Observable
     f_ = toCombinator(f)
     f = if options.lazyF then f_ else (x,y) -> f_(x(), y())
     acc = toOption(seed).map((x) -> _.always(x))
-    subscribe = (sink) =>
+    dispatcher = @dispatcher
+    subscribe = (sink) ->
       initSent = false
       unsub = nop
       reply = Bacon.more
@@ -520,7 +521,7 @@ class Observable
             if (reply == Bacon.noMore)
               unsub()
               unsub = nop
-      unsub = @dispatcher.subscribe (event) ->
+      unsub = dispatcher.subscribe (event) ->
         if (event.hasValue())
           if (initSent and event.isInitial())
             Bacon.more # init already sent, skip this one
