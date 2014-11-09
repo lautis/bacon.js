@@ -634,9 +634,8 @@ Observable :: assign = Observable :: onValue
 Observable :: inspect = Observable :: toString
 
 flatMap_ = (root, f, firstOnly, limit) ->
-  rootDep = [root]
   childDeps = []
-  result = new EventStream describe(root, "flatMap" + (if firstOnly then "First" else ""), f), (sink) ->
+  result = new EventStream new CompositeDesc(root, "flatMap" + (if firstOnly then "First" else ""), [f], childDeps), (sink) ->
     composite = new CompositeUnsubscribe()
     queue = []
     spawn = (event) ->
@@ -675,7 +674,6 @@ flatMap_ = (root, f, firstOnly, limit) ->
         else
           spawn event
     composite.unsubscribe
-  result.internalDeps = -> if (childDeps.length) then rootDep.concat(childDeps) else rootDep
   result
 
 class EventStream extends Observable
@@ -1161,7 +1159,7 @@ Source.fromObservable = (s) ->
     new ConsumingSource(s, true)
 
 describe = (context, method, args...) ->
-  if (context or method) instanceof Desc
+  if (context or method) instanceof Desc || (context or method) instanceof CompositeDesc
     context or method
   else
     new Desc(context, method, args)
@@ -1184,6 +1182,22 @@ class Desc
   apply: (obs) ->
     obs.desc = this
     obs
+  toString: ->
+    _.toString(@context) + "." + _.toString(@method) + "(" + _.map(_.toString, @args) + ")"
+
+class CompositeDesc
+  constructor: (@context, @method, @args, @children) ->
+
+  deps: ->
+    if @children.length
+      [@context].concat(@children)
+    else
+      [@context]
+
+  apply: (obs) ->
+    obs.desc = this
+    obs
+
   toString: ->
     _.toString(@context) + "." + _.toString(@method) + "(" + _.map(_.toString, @args) + ")"
 
