@@ -206,7 +206,7 @@ Bacon.mergeAll = (streams...) ->
 Bacon.zipAsArray = (streams...) ->
   if isArray streams[0]
     streams = streams[0]
-  withDescription(Bacon, "zipAsArray", streams..., Bacon.zipWith(streams, (xs...) -> xs))
+  withDescription(Bacon, "zipAsArray", streams..., Bacon.zipWith(streams, argumentsAsArray))
 
 Bacon.zipWith = (f, streams...) ->
   unless isFunction(f)
@@ -219,17 +219,22 @@ Bacon.groupSimultaneous = (streams...) ->
     streams = streams[0]
   sources = for s in streams
     new BufferingSource(s)
-  withDescription(Bacon, "groupSimultaneous", streams..., Bacon.when(sources, ((xs...) -> xs)))
+  withDescription(Bacon, "groupSimultaneous", streams..., Bacon.when(sources, argumentsAsArray))
 
 Bacon.combineAsArray = (streams...) ->
-  if (streams.length == 1 and isArray(streams[0]))
-    streams = streams[0]
-  for stream, index in streams
-    streams[index] = Bacon.constant(stream) unless (isObservable(stream))
+  streams = if (arguments.length == 1 and isArray(arguments[0]))
+    arguments[0]
+  else
+    arguments
+
   if streams.length
-    sources = for s in streams
-      new Source(s, true)
-    withDescription(Bacon, "combineAsArray", streams..., Bacon.when(sources, ((xs...) -> xs)).toProperty())
+    sources = for stream, index in streams
+      stream = if isObservable(stream)
+        stream
+      else
+        Bacon.constant(stream)
+      new Source(stream, true)
+    withDescription(Bacon, "combineAsArray", streams..., Bacon.when(sources, argumentsAsArray).toProperty())
   else
     Bacon.constant([])
 
@@ -363,7 +368,7 @@ class Observable
     @id = ++idCounter
     withDescription(desc, this)
     @initialDesc = @desc
-  
+
   subscribe: (sink) ->
     UpdateBarrier.wrappedSubscribe(this, sink)
 
@@ -1503,6 +1508,7 @@ Bacon.Error = Error
 nop = ->
 latterF = (_, x) -> x()
 former = (x, _) -> x
+argumentsAsArray = -> arg for arg in arguments
 initial = (value) -> new Initial(value, true)
 next = (value) -> new Next(value, true)
 end = -> new End()
