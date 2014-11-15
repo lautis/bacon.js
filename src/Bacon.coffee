@@ -308,7 +308,7 @@ class Event
 class Next extends Event
   constructor: (valueF, eager) ->
     super()
-    if !eager && isFunction(valueF) || valueF instanceof Initial
+    if !eager && isFunction(valueF)
       @valueF = valueF
       @valueInternal = undefined
     else
@@ -317,30 +317,36 @@ class Next extends Event
   isNext: -> true
   hasValue: -> true
   value: ->
-    if @valueF instanceof Initial
-      @valueInternal = @valueF.value()
-      @valueF = undefined
-    else if @valueF
+    if @valueF
       @valueInternal = @valueF()
       @valueF = undefined
     @valueInternal
   fmap: (f) ->
-    if @valueInternal
-      value = @valueInternal
-      @apply(-> f(value))
-    else
+    if @valueF
       event = this
       @apply(-> f(event.value()))
+    else
+      value = @valueInternal
+      @apply(-> f(value))
   apply: (value) -> new Next(value)
   filter: (f) -> f(@value())
   toString: -> _.toString(@value())
   log: -> @value()
 
+class NextWrap extends Next
+  constructor: (value, eager) ->
+    super()
+    @valueF = value
+    @valueInternal = undefined
+
+  value: ->
+    @valueF.value()
+
 class Initial extends Next
   isInitial: -> true
   isNext: -> false
   apply: (value) -> new Initial(value)
-  toNext: -> new Next(this)
+  toNext: -> new NextWrap(this)
 
 class End extends Event
   isEnd: -> true
@@ -363,7 +369,7 @@ class Observable
     @id = ++idCounter
     withDescription(desc, this)
     @initialDesc = @desc
-  
+
   subscribe: (sink) ->
     UpdateBarrier.wrappedSubscribe(this, sink)
 
