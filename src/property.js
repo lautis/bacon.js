@@ -92,10 +92,10 @@ extend(Property.prototype, {
   _isProperty: true,
 
   changes() {
-    return new EventStream(new Bacon.Desc(this, "changes", []), (sink) => {
-      return this.dispatcher.subscribe(function(event) {
-        if (!event.isInitial()) { return sink(event); }
-      });
+    return new EventStream(new Bacon.Desc(this, "changes", []), this.dispatcher, function(event) {
+      if (!event.isInitial()) {
+        return this.push(event);
+      }
     });
   },
 
