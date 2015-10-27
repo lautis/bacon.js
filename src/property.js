@@ -109,11 +109,12 @@ extend(Property.prototype, {
   },
 
   toEventStream() {
-    return new EventStream(new Bacon.Desc(this, "toEventStream", []), (sink) => {
-      return this.dispatcher.subscribe(function(event) {
-        if (event.isInitial()) { event = event.toNext(); }
-        return sink(event);
-      });
+    return new EventStream(new Bacon.Desc(this, "toEventStream", []), this.dispatcher, function(event) {
+      if (event.isInitial()) {
+        return this.push(event.toNext());
+      } else {
+        return this.push(event);
+      }
     });
   }
 });
