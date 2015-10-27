@@ -51,6 +51,6 @@ Bacon.EventStream.prototype.holdWhen = function(valve) {
     });
     subscribed = true;
     endIfBothEnded();
-    return composite.unsubscribe;
+    return composite;
   });
 };

@@ -50,7 +50,7 @@ var flatMap_ = function(root, f, firstOnly, limit) {
               event = event.toNext();
             }
             var reply = sink(event);
-            if (reply === Bacon.noMore) { unsubAll(); }
+            if (reply === Bacon.noMore) { composite.unsubscribe(); }
             return reply;
           }
         });
@@ -81,7 +81,7 @@ var flatMap_ = function(root, f, firstOnly, limit) {
       }
     });
     });
-    return composite.unsubscribe;
+    return composite;
   });
   result.internalDeps = function() {
     if (childDeps.length) {

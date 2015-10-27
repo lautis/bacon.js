@@ -94,6 +94,8 @@ Dispatcher.prototype.handleEvent = function(event) {
 Dispatcher.prototype.unsubscribeFromSource = function() {
   if (this.unsubSrc === true) {
     this._subscribe.unsubscribe(this);
+  } else if (this.unsubSrc && this.unsubSrc.unsubscribe) {
+    this.unsubSrc.unsubscribe();
   } else if(this.unsubSrc) {
     this.unsubSrc();
   }
@@ -127,7 +129,7 @@ Dispatcher.prototype.subscribe = function(sink, internal = false) {
         this.unsubSrc = true;
       } else {
         this.unsubSrc = this._subscribe(_.bind(this.handleEvent, this));
-        assertFunction(this.unsubSrc);
+        //assertFunction(this.unsubSrc);
       }
     }
 

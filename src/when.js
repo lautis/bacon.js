@@ -77,7 +77,7 @@ Bacon.when = function() {
       }
     };
     var nonFlattened = function(trigger) { return !trigger.source.flatten; };
-    var part = function(source) { return function(unsubAll) {
+    var part = function(source) { return function(unsubAll, __, composite) {
       var flushLater = function() {
         return UpdateBarrier.whenDoneWith(resultStream, flush);
       };
@@ -134,18 +134,19 @@ Bacon.when = function() {
             sink(endEvent());
           }
         }
-        if (reply === Bacon.noMore) { unsubAll(); }
+        if (reply === Bacon.noMore) { composite.unsubscribe(); }
         //console.log "flushed"
         return reply;
       };
       return source.subscribe(function(e) {
+        var reply;
         if (e.isEnd()) {
           //console.log "got end"
           ends = true;
           source.markEnded();
           flushLater();
         } else if (e.isError()) {
-          var reply = sink(e);
+          reply = sink(e);
         } else {
           //console.log "got value", e.value()
           source.push(e);
@@ -155,7 +156,7 @@ Bacon.when = function() {
             if (needsBarrier || UpdateBarrier.hasWaiters()) { flushLater(); } else { flush(); }
           }
         }
-        if (reply === Bacon.noMore) { unsubAll(); }
+        if (reply === Bacon.noMore) { composite.unsubscribe(); }
         return reply || Bacon.more;
       });
     };
@@ -168,7 +169,7 @@ Bacon.when = function() {
         result.push(part(s));
       }
       return result;
-    })()).unsubscribe;
+    })());
   });
   return resultStream;
 };

@@ -13,7 +13,7 @@ Bacon.mergeAll = function() {
     return new EventStream(new Bacon.Desc(Bacon, "mergeAll", streams), function(sink) {
       var ends = 0;
       var smartSink = function(obs) {
-        return function(unsubBoth) {
+        return function(unsubBoth, unsubMe, composite) {
           return obs.dispatcher.subscribe(function(event) {
             if (event.isEnd()) {
               ends++;
@@ -24,14 +24,14 @@ Bacon.mergeAll = function() {
               }
             } else {
               var reply = sink(event);
-              if (reply === Bacon.noMore) { unsubBoth(); }
+              if (reply === Bacon.noMore) { composite.unsubscribe(); }
               return reply;
             }
           });
         };
       };
       var sinks = _.map(smartSink, streams);
-      return new Bacon.CompositeUnsubscribe(sinks).unsubscribe;
+      return new Bacon.CompositeUnsubscribe(sinks);
     });
   } else {
     return Bacon.never();

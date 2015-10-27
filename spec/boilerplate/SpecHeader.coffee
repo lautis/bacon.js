@@ -24,7 +24,7 @@ lessThan = (limit) ->
 times = (x, y) -> x * y
 add = (x, y) -> x + y
 id = (x) -> x
-activate = (obs) -> 
+activate = (obs) ->
   obs.onValue(->)
   obs
 
@@ -72,7 +72,7 @@ fromBinder = Bacon.fromBinder || (binder, eventTransformer = Bacon._.id) ->
       value = eventTransformer.apply(this, args)
       unless (value instanceof Array) and Bacon._.last(value) instanceof Bacon.Event
         value = [value]
-        
+
       reply = Bacon.more
       for event in value
         reply = sink(event = toEvent(event))
@@ -145,7 +145,7 @@ mergeAll = Bacon.mergeAll || (streams...) ->
   if streams.length
     new Bacon.EventStream noDesc, (sink) ->
       ends = 0
-      smartSink = (obs) -> (unsubBoth) -> obs.dispatcher.subscribe (event) ->
+      smartSink = (obs) -> (__, ___, composite) -> obs.dispatcher.subscribe (event) ->
         if event.isEnd()
           ends++
           if ends == streams.length
@@ -154,10 +154,10 @@ mergeAll = Bacon.mergeAll || (streams...) ->
             Bacon.more
         else
           reply = sink event
-          unsubBoth() if reply == Bacon.noMore
+          composite.unsubscribe() if reply == Bacon.noMore
           reply
       sinks = Bacon._.map smartSink, streams
-      new Bacon.CompositeUnsubscribe(sinks).unsubscribe
+      new Bacon.CompositeUnsubscribe(sinks)
   else
     Bacon.never()
 
