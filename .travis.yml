@@ -1,29 +1,27 @@
 language: node_js
 sudo: false
-
 node_js:
-  - "0.10"
-  - "0.12"
-  - "4.0"
-  - "4.1"
-
+- '0.10'
+- '0.12'
+- '4.0'
+- '4.1'
 before_install:
-  - npm install -g npm@'>=2.11'
-  - npm conf set strict-ssl false
-
+- npm install -g npm@'>=2.11'
+- npm conf set strict-ssl false
 after_install:
-  - sudo npm install -g phantomjs grunt-cli
-
+- sudo npm install -g phantomjs grunt-cli
 before_script:
-  - phantomjs --version
-
+- phantomjs --version
 script:
-  - npm test
-  - grunt readme && git diff --exit-code README.md
-
+- npm test
+- grunt readme && git diff --exit-code README.md
+- "./browsertest/browserify && node_modules/.bin/browserstack-runner"
 notifications:
   flowdock: 3853ef33f6943539cbbed913648575be
-
 branches:
   only:
-    - master
+  - master
+env:
+  global:
+  - secure: brWr5xtyy94ISJXr9dXc0xpk4y9Z4wMXi/+z9gBmdceNSyOhWk/AwvxEJ84n46/84+rJX5j7lG6e2NQia438i/SPZsiKVAZbiis6OIocwqcfZWEZJoE0dSGrSOdMO2ylks4eveqbvCFssuRcmNxe12925A1rgoGDLCQvNdOxWRU=
+  - secure: liMk2XPOQnlrfpVm9ca8HY71DCI5bKHFsFyvO/Dxh6LDpkT4lBd9FUqAbsdsMtpA4MegWRn+K5qjbHYL7TPK+PKMW2y9rMZv4tsAsSmlq7c2YVuA2QIEj+8HMN1dhG8NVqTQ3YPDc5YQ5TGLU8DJchs+AUarrfZXiOkVzYeR3zo=
