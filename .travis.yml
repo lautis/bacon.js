@@ -21,6 +21,7 @@ notifications:
 branches:
   only:
   - master
+  - browserstack
 env:
   global:
   - secure: brWr5xtyy94ISJXr9dXc0xpk4y9Z4wMXi/+z9gBmdceNSyOhWk/AwvxEJ84n46/84+rJX5j7lG6e2NQia438i/SPZsiKVAZbiis6OIocwqcfZWEZJoE0dSGrSOdMO2ylks4eveqbvCFssuRcmNxe12925A1rgoGDLCQvNdOxWRU=
