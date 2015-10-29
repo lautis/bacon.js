@@ -38,7 +38,7 @@ module.exports = function(config) {
     browsers: Object.keys(customLaunchers),
     exclude: [],
     preprocessors: {},
-    reporters: ['progress', 'saucelabs'],
+    reporters: ['dots', 'saucelabs'],
     singleRun: true,
     port: 9876,
     colors: true,
