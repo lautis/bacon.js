@@ -5,7 +5,7 @@
             return 'Bacon';
         }
     };
-    Bacon.version = '0.7.83';
+    Bacon.version = '<version>';
     var Exception = (typeof global !== 'undefined' && global !== null ? global : this).Error;
     var nop = function () {
     };
@@ -1031,7 +1031,6 @@
     function Dispatcher(_subscribe, _handleEvent) {
         this._subscribe = _subscribe;
         this._handleEvent = _handleEvent;
-        this.subscribe = _.bind(this.subscribe, this);
         this.handleEvent = _.bind(this.handleEvent, this);
         this.pushing = false;
         this.ended = false;
@@ -1205,7 +1204,11 @@
             return this;
         },
         withHandler: function (handler) {
-            return new EventStream(new Bacon.Desc(this, 'withHandler', [handler]), this.dispatcher.subscribe, handler);
+            var _this3 = this;
+            var subscribe = function (sink) {
+                return _this3.dispatcher.subscribe(sink);
+            };
+            return new EventStream(new Bacon.Desc(this, 'withHandler', [handler]), subscribe, handler);
         }
     });
     Bacon.EventStream = EventStream;
@@ -1445,7 +1448,6 @@
     function PropertyDispatcher(property, subscribe, handleEvent) {
         Dispatcher.call(this, subscribe, handleEvent);
         this.property = property;
-        this.subscribe = _.bind(this.subscribe, this);
         this.current = None;
         this.currentValueRootId = undefined;
         this.propertyEnded = false;
@@ -1473,7 +1475,7 @@
             }
         },
         subscribe: function (sink) {
-            var _this3 = this;
+            var _this4 = this;
             var initSent = false;
             var reply = Bacon.more;
             if (this.current.isDefined && (this.hasSubscribers() || this.propertyEnded)) {
@@ -1481,8 +1483,8 @@
                 var valId = this.currentValueRootId;
                 if (!this.propertyEnded && valId && dispatchingId && dispatchingId !== valId) {
                     UpdateBarrier.whenDoneWith(this.property, function () {
-                        if (_this3.currentValueRootId === valId) {
-                            return sink(initialEvent(_this3.current.get().value()));
+                        if (_this4.currentValueRootId === valId) {
+                            return sink(initialEvent(_this4.current.get().value()));
                         }
                     });
                     return this.maybeSubSource(sink, reply);
@@ -1507,9 +1509,9 @@
     extend(Property.prototype, {
         _isProperty: true,
         changes: function () {
-            var _this4 = this;
+            var _this5 = this;
             return new EventStream(new Bacon.Desc(this, 'changes', []), function (sink) {
-                return _this4.dispatcher.subscribe(function (event) {
+                return _this5.dispatcher.subscribe(function (event) {
                     if (!event.isInitial()) {
                         return sink(event);
                     }
@@ -1517,15 +1519,19 @@
             });
         },
         withHandler: function (handler) {
-            return new Property(new Bacon.Desc(this, 'withHandler', [handler]), this.dispatcher.subscribe, handler);
+            var _this6 = this;
+            var subscribe = function (sink) {
+                return _this6.dispatcher.subscribe(sink);
+            };
+            return new Property(new Bacon.Desc(this, 'withHandler', [handler]), subscribe, handler);
         },
         toProperty: function () {
             return this;
         },
         toEventStream: function () {
-            var _this5 = this;
+            var _this7 = this;
             return new EventStream(new Bacon.Desc(this, 'toEventStream', []), function (sink) {
-                return _this5.dispatcher.subscribe(function (event) {
+                return _this7.dispatcher.subscribe(function (event) {
                     if (event.isInitial()) {
                         event = event.toNext();
                     }
@@ -1805,10 +1811,10 @@
                 }
             },
             schedule: function () {
-                var _this6 = this;
+                var _this8 = this;
                 if (!this.scheduled) {
                     return this.scheduled = delay(function () {
-                        return _this6.flush();
+                        return _this8.flush();
                     });
                 }
             }
@@ -1821,9 +1827,9 @@
             };
         }
         return withDesc(new Bacon.Desc(this, 'buffer', []), this.withHandler(function (event) {
-            var _this7 = this;
+            var _this9 = this;
             buffer.push = function (event) {
-                return _this7.push(event);
+                return _this9.push(event);
             };
             if (event.isError()) {
                 reply = this.push(event);
@@ -2044,13 +2050,13 @@
             return this.unsubAll;
         },
         guardedSink: function (input) {
-            var _this8 = this;
+            var _this10 = this;
             return function (event) {
                 if (event.isEnd()) {
-                    _this8.unsubscribeInput(input);
+                    _this10.unsubscribeInput(input);
                     return Bacon.noMore;
                 } else {
-                    return _this8.sink(event);
+                    return _this10.sink(event);
                 }
             };
         },
@@ -2072,7 +2078,7 @@
             }
         },
         plug: function (input) {
-            var _this9 = this;
+            var _this11 = this;
             if (this.ended) {
                 return;
             }
@@ -2082,7 +2088,7 @@
                 this.subscribeInput(sub);
             }
             return function () {
-                return _this9.unsubscribeInput(input);
+                return _this11.unsubscribeInput(input);
             };
         },
         end: function () {
@@ -2320,7 +2326,7 @@
         }));
     };
     Bacon.Observable.prototype.scan = function (seed, f) {
-        var _this10 = this;
+        var _this12 = this;
         var resultProperty;
         f = toCombinator(f);
         var acc = toOption(seed);
@@ -2344,7 +2350,7 @@
                     });
                 }
             };
-            unsub = _this10.dispatcher.subscribe(function (event) {
+            unsub = _this12.dispatcher.subscribe(function (event) {
                 if (event.hasValue()) {
                     if (initHandled && event.isInitial()) {
                         return Bacon.more;
@@ -2779,15 +2785,15 @@
     };
     Bacon.$ = {};
     Bacon.$.asEventStream = function (eventName, selector, eventTransformer) {
-        var _this11 = this;
+        var _this13 = this;
         if (_.isFunction(selector)) {
             eventTransformer = selector;
             selector = undefined;
         }
         return withDesc(new Bacon.Desc(this.selector || this, 'asEventStream', [eventName]), Bacon.fromBinder(function (handler) {
-            _this11.on(eventName, selector, handler);
+            _this13.on(eventName, selector, handler);
             return function () {
-                return _this11.off(eventName, selector, handler);
+                return _this13.off(eventName, selector, handler);
             };
         }, eventTransformer));
     };
@@ -3071,7 +3077,7 @@
         });
     };
     Observable.prototype.firstToPromise = function (PromiseCtr) {
-        var _this12 = this;
+        var _this14 = this;
         if (typeof PromiseCtr !== 'function') {
             if (typeof Promise === 'function') {
                 PromiseCtr = Promise;
@@ -3080,7 +3086,7 @@
             }
         }
         return new PromiseCtr(function (resolve, reject) {
-            return _this12.subscribe(function (event) {
+            return _this14.subscribe(function (event) {
                 if (event.hasValue()) {
                     resolve(event.value());
                 }
