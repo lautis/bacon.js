@@ -961,7 +961,6 @@
     Bacon.Observable = Observable;
     function CompositeUnsubscribe() {
         var ss = arguments.length <= 0 || arguments[0] === undefined ? [] : arguments[0];
-        this.unsubscribe = _.bind(this.unsubscribe, this);
         this.unsubscribed = false;
         this.subscriptions = [];
         this.starting = [];
@@ -987,7 +986,7 @@
                 _this.remove(unsub);
                 return _.remove(subscription, _this.starting);
             };
-            unsub = subscription(this.unsubscribe, unsubMe);
+            unsub = subscription(null, unsubMe, this);
             if (!(this.unsubscribed || ended)) {
                 this.subscriptions.push(unsub);
             } else {
@@ -1112,6 +1111,8 @@
     Dispatcher.prototype.unsubscribeFromSource = function () {
         if (this.unsubSrc === true) {
             this._subscribe.unsubscribe(this);
+        } else if (this.unsubSrc && this.unsubSrc.unsubscribe) {
+            this.unsubSrc.unsubscribe();
         } else if (this.unsubSrc) {
             this.unsubSrc();
         }
@@ -1324,7 +1325,7 @@
                 return !trigger.source.flatten;
             };
             var part = function (source) {
-                return function (unsubAll) {
+                return function (unsubAll, __, composite) {
                     var flushLater = function () {
                         return UpdateBarrier.whenDoneWith(resultStream, flush);
                     };
@@ -1378,17 +1379,18 @@
                             }
                         }
                         if (reply === Bacon.noMore) {
-                            unsubAll();
+                            composite.unsubscribe();
                         }
                         return reply;
                     };
                     return source.subscribe(function (e) {
+                        var reply;
                         if (e.isEnd()) {
                             ends = true;
                             source.markEnded();
                             flushLater();
                         } else if (e.isError()) {
-                            var reply = sink(e);
+                            reply = sink(e);
                         } else {
                             source.push(e);
                             if (source.sync) {
@@ -1404,7 +1406,7 @@
                             }
                         }
                         if (reply === Bacon.noMore) {
-                            unsubAll();
+                            composite.unsubscribe();
                         }
                         return reply || Bacon.more;
                     });
@@ -1417,7 +1419,7 @@
                     result.push(part(s));
                 }
                 return result;
-            }()).unsubscribe;
+            }());
         });
         return resultStream;
     };
@@ -1944,7 +1946,7 @@
                             }
                             var reply = sink(event);
                             if (reply === Bacon.noMore) {
-                                unsubAll();
+                                composite.unsubscribe();
                             }
                             return reply;
                         }
@@ -1983,7 +1985,7 @@
                     }
                 });
             });
-            return composite.unsubscribe;
+            return composite;
         });
         result.internalDeps = function () {
             if (childDeps.length) {
@@ -2789,7 +2791,7 @@
             });
             subscribed = true;
             endIfBothEnded();
-            return composite.unsubscribe;
+            return composite;
         });
     };
     Bacon.interval = function (delay) {
@@ -2856,7 +2858,7 @@
             return new EventStream(new Bacon.Desc(Bacon, 'mergeAll', streams), function (sink) {
                 var ends = 0;
                 var smartSink = function (obs) {
-                    return function (unsubBoth) {
+                    return function (unsubBoth, unsubMe, composite) {
                         return obs.dispatcher.subscribe(function (event) {
                             if (event.isEnd()) {
                                 ends++;
@@ -2868,7 +2870,7 @@
                             } else {
                                 var reply = sink(event);
                                 if (reply === Bacon.noMore) {
-                                    unsubBoth();
+                                    composite.unsubscribe();
                                 }
                                 return reply;
                             }
@@ -2876,7 +2878,7 @@
                     };
                 };
                 var sinks = _.map(smartSink, streams);
-                return new Bacon.CompositeUnsubscribe(sinks).unsubscribe;
+                return new Bacon.CompositeUnsubscribe(sinks);
             });
         } else {
             return Bacon.never();

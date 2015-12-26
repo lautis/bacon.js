@@ -1205,7 +1205,7 @@ Dispatcher.prototype.handleEvent = function (event) {
 Dispatcher.prototype.unsubscribeFromSource = function () {
   if (this.unsubSrc === true) {
     this._subscribe.unsubscribe(this);
-  } else if (this.unsubSrc.unsubscribe) {
+  } else if (this.unsubSrc && this.unsubSrc.unsubscribe) {
     this.unsubSrc.unsubscribe();
   } else if (this.unsubSrc) {
     this.unsubSrc();
