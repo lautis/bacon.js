@@ -1549,14 +1549,12 @@
             return this;
         },
         toEventStream: function () {
-            var _this4 = this;
-            return new EventStream(new Bacon.Desc(this, 'toEventStream', []), function (sink) {
-                return _this4.dispatcher.subscribe(function (event) {
-                    if (event.isInitial()) {
-                        event = event.toNext();
-                    }
-                    return sink(event);
-                });
+            return new EventStream(new Bacon.Desc(this, 'toEventStream', []), this.dispatcher, function (event) {
+                if (event.isInitial()) {
+                    return this.push(event.toNext());
+                } else {
+                    return this.push(event);
+                }
             });
         }
     });
@@ -1831,10 +1829,10 @@
                 }
             },
             schedule: function () {
-                var _this5 = this;
+                var _this4 = this;
                 if (!this.scheduled) {
                     return this.scheduled = delay(function () {
-                        return _this5.flush();
+                        return _this4.flush();
                     });
                 }
             }
@@ -1847,9 +1845,9 @@
             };
         }
         return withDesc(new Bacon.Desc(this, 'buffer', []), this.withHandler(function (event) {
-            var _this6 = this;
+            var _this5 = this;
             buffer.push = function (event) {
-                return _this6.push(event);
+                return _this5.push(event);
             };
             if (event.isError()) {
                 reply = this.push(event);
@@ -2070,13 +2068,13 @@
             return this.unsubAll;
         },
         guardedSink: function (input) {
-            var _this7 = this;
+            var _this6 = this;
             return function (event) {
                 if (event.isEnd()) {
-                    _this7.unsubscribeInput(input);
+                    _this6.unsubscribeInput(input);
                     return Bacon.noMore;
                 } else {
-                    return _this7.sink(event);
+                    return _this6.sink(event);
                 }
             };
         },
@@ -2098,7 +2096,7 @@
             }
         },
         plug: function (input) {
-            var _this8 = this;
+            var _this7 = this;
             if (this.ended) {
                 return;
             }
@@ -2108,7 +2106,7 @@
                 this.subscribeInput(sub);
             }
             return function () {
-                return _this8.unsubscribeInput(input);
+                return _this7.unsubscribeInput(input);
             };
         },
         end: function () {
@@ -2346,7 +2344,7 @@
         }));
     };
     Bacon.Observable.prototype.scan = function (seed, f) {
-        var _this9 = this;
+        var _this8 = this;
         var resultProperty;
         f = toCombinator(f);
         var acc = toOption(seed);
@@ -2370,7 +2368,7 @@
                     });
                 }
             };
-            unsub = _this9.dispatcher.subscribe(function (event) {
+            unsub = _this8.dispatcher.subscribe(function (event) {
                 if (event.hasValue()) {
                     if (initHandled && event.isInitial()) {
                         return Bacon.more;
@@ -2805,15 +2803,15 @@
     };
     Bacon.$ = {};
     Bacon.$.asEventStream = function (eventName, selector, eventTransformer) {
-        var _this10 = this;
+        var _this9 = this;
         if (_.isFunction(selector)) {
             eventTransformer = selector;
             selector = undefined;
         }
         return withDesc(new Bacon.Desc(this.selector || this, 'asEventStream', [eventName]), Bacon.fromBinder(function (handler) {
-            _this10.on(eventName, selector, handler);
+            _this9.on(eventName, selector, handler);
             return function () {
-                return _this10.off(eventName, selector, handler);
+                return _this9.off(eventName, selector, handler);
             };
         }, eventTransformer));
     };
@@ -3097,7 +3095,7 @@
         });
     };
     Observable.prototype.firstToPromise = function (PromiseCtr) {
-        var _this11 = this;
+        var _this10 = this;
         if (typeof PromiseCtr !== 'function') {
             if (typeof Promise === 'function') {
                 PromiseCtr = Promise;
@@ -3106,7 +3104,7 @@
             }
         }
         return new PromiseCtr(function (resolve, reject) {
-            return _this11.subscribe(function (event) {
+            return _this10.subscribe(function (event) {
                 if (event.hasValue()) {
                     resolve(event.value());
                 }

@@ -1690,15 +1690,12 @@ extend(Property.prototype, {
   },
 
   toEventStream: function () {
-    var _this4 = this;
-
-    return new EventStream(new Bacon.Desc(this, "toEventStream", []), function (sink) {
-      return _this4.dispatcher.subscribe(function (event) {
-        if (event.isInitial()) {
-          event = event.toNext();
-        }
-        return sink(event);
-      });
+    return new EventStream(new Bacon.Desc(this, "toEventStream", []), this.dispatcher, function (event) {
+      if (event.isInitial()) {
+        return this.push(event.toNext());
+      } else {
+        return this.push(event);
+      }
     });
   }
 });
@@ -1980,11 +1977,11 @@ Bacon.EventStream.prototype.buffer = function (delay) {
       }
     },
     schedule: function () {
-      var _this5 = this;
+      var _this4 = this;
 
       if (!this.scheduled) {
         return this.scheduled = delay(function () {
-          return _this5.flush();
+          return _this4.flush();
         });
       }
     }
@@ -1997,10 +1994,10 @@ Bacon.EventStream.prototype.buffer = function (delay) {
     };
   }
   return withDesc(new Bacon.Desc(this, "buffer", []), this.withHandler(function (event) {
-    var _this6 = this;
+    var _this5 = this;
 
     buffer.push = function (event) {
-      return _this6.push(event);
+      return _this5.push(event);
     };
     if (event.isError()) {
       reply = this.push(event);
@@ -2239,14 +2236,14 @@ extend(Bus.prototype, {
   },
 
   guardedSink: function (input) {
-    var _this7 = this;
+    var _this6 = this;
 
     return function (event) {
       if (event.isEnd()) {
-        _this7.unsubscribeInput(input);
+        _this6.unsubscribeInput(input);
         return Bacon.noMore;
       } else {
-        return _this7.sink(event);
+        return _this6.sink(event);
       }
     };
   },
@@ -2271,7 +2268,7 @@ extend(Bus.prototype, {
   },
 
   plug: function (input) {
-    var _this8 = this;
+    var _this7 = this;
 
     assertObservable(input);
     if (this.ended) {
@@ -2283,7 +2280,7 @@ extend(Bus.prototype, {
       this.subscribeInput(sub);
     }
     return function () {
-      return _this8.unsubscribeInput(input);
+      return _this7.unsubscribeInput(input);
     };
   },
 
@@ -2548,7 +2545,7 @@ Bacon.Observable.prototype.decode = function (cases) {
 };
 
 Bacon.Observable.prototype.scan = function (seed, f) {
-  var _this9 = this;
+  var _this8 = this;
 
   var resultProperty;
   f = toCombinator(f);
@@ -2573,7 +2570,7 @@ Bacon.Observable.prototype.scan = function (seed, f) {
         });
       }
     };
-    unsub = _this9.dispatcher.subscribe(function (event) {
+    unsub = _this8.dispatcher.subscribe(function (event) {
       if (event.hasValue()) {
         if (initHandled && event.isInitial()) {
           return Bacon.more;
@@ -2992,7 +2989,7 @@ Bacon.interval = function (delay) {
 
 Bacon.$ = {};
 Bacon.$.asEventStream = function (eventName, selector, eventTransformer) {
-  var _this10 = this;
+  var _this9 = this;
 
   if (_.isFunction(selector)) {
     eventTransformer = selector;
@@ -3000,9 +2997,9 @@ Bacon.$.asEventStream = function (eventName, selector, eventTransformer) {
   }
 
   return withDesc(new Bacon.Desc(this.selector || this, "asEventStream", [eventName]), Bacon.fromBinder(function (handler) {
-    _this10.on(eventName, selector, handler);
+    _this9.on(eventName, selector, handler);
     return function () {
-      return _this10.off(eventName, selector, handler);
+      return _this9.off(eventName, selector, handler);
     };
   }, eventTransformer));
 };
@@ -3305,7 +3302,7 @@ Bacon.Property.prototype.throttle = function (delay) {
 };
 
 Observable.prototype.firstToPromise = function (PromiseCtr) {
-  var _this11 = this;
+  var _this10 = this;
 
   if (typeof PromiseCtr !== "function") {
     if (typeof Promise === "function") {
@@ -3316,7 +3313,7 @@ Observable.prototype.firstToPromise = function (PromiseCtr) {
   }
 
   return new PromiseCtr(function (resolve, reject) {
-    return _this11.subscribe(function (event) {
+    return _this10.subscribe(function (event) {
       if (event.hasValue()) {
         resolve(event.value());
       }
