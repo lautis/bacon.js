@@ -9,13 +9,16 @@ function EventStream(desc, subscribe, handler) {
   if (!(this instanceof EventStream)) {
     return new EventStream(desc, subscribe, handler);
   }
-  if (_.isFunction(desc)) {
+  if (_.isFunction(desc) || desc._isDispatcher) {
     handler = subscribe;
     subscribe = desc;
     desc = Desc.empty;
   }
   Observable.call(this, desc);
-  assertFunction(subscribe);
+
+  if (!subscribe._isDispatcher) {
+    assertFunction(subscribe);
+  }
   this.dispatcher = new Dispatcher(subscribe, handler);
   registerObs(this);
 }
@@ -75,8 +78,7 @@ extend(EventStream.prototype, {
   toEventStream() { return this; },
 
   withHandler(handler) {
-    const subscribe = (sink) => this.dispatcher.subscribe(sink);
-    return new EventStream(new Bacon.Desc(this, "withHandler", [handler]), subscribe, handler);
+    return new EventStream(new Bacon.Desc(this, "withHandler", [handler]), this.dispatcher, handler);
   }
 });
 

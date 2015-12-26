@@ -28,18 +28,19 @@ extend(PropertyDispatcher.prototype, {
     return Dispatcher.prototype.push.call(this, event);
   },
 
-  maybeSubSource(sink, reply) {
+  maybeSubSource(subscription, reply, internal) {
     if (reply === Bacon.noMore) {
       return nop;
     } else if (this.propertyEnded) {
-      sink(endEvent());
+      subscription.handleEvent(endEvent());
       return nop;
     } else {
-      return Dispatcher.prototype.subscribe.call(this, sink);
+      return Dispatcher.prototype.subscribe.call(this, subscription, internal);
     }
   },
 
-  subscribe(sink) {
+  subscribe(sink, internal = false) {
+    const subscription = this._toSubscription(sink);
     var initSent = false;
     // init value is "bounced" here because the base Dispatcher class
     // won't add more than one subscription to the underlying observable.
@@ -57,28 +58,31 @@ extend(PropertyDispatcher.prototype, {
         //console.log "bouncing with possibly stale value", event.value(), "root at", valId, "vs", dispatchingId
         UpdateBarrier.whenDoneWith(this.property, () => {
           if (this.currentValueRootId === valId) {
-            return sink(initialEvent(this.current.get().value()));
+            return subscription.handleEvent(initialEvent(this.current.get().value()));
           }
         });
         // the subscribing thing should be defered
-        return this.maybeSubSource(sink, reply);
+        return this.maybeSubSource(subscription, reply, internal);
       } else {
         //console.log "bouncing value immediately"
         UpdateBarrier.inTransaction(undefined, this, function() {
-          reply = sink(initialEvent(this.current.get().value()));
+          reply = subscription.handleEvent(initialEvent(this.current.get().value()));
           return reply;
         }, []);
-        return this.maybeSubSource(sink, reply);
+        return this.maybeSubSource(subscription, reply, internal);
       }
     } else {
-      return this.maybeSubSource(sink, reply);
+      return this.maybeSubSource(subscription, reply, internal);
     }
   }
 });
 
 function Property(desc, subscribe, handler) {
   Observable.call(this, desc);
-  assertFunction(subscribe);
+  if (!subscribe._isDispatcher) {
+    assertFunction(subscribe);
+  }
+
   this.dispatcher = new PropertyDispatcher(this, subscribe, handler);
   registerObs(this);
 }
@@ -96,8 +100,7 @@ extend(Property.prototype, {
   },
 
   withHandler(handler) {
-    const subscribe = (sink) => this.dispatcher.subscribe(sink);
-    return new Property(new Bacon.Desc(this, "withHandler", [handler]), subscribe, handler);
+    return new Property(new Bacon.Desc(this, "withHandler", [handler]), this.dispatcher, handler);
   },
 
   toProperty() {
