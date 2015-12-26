@@ -36,7 +36,7 @@ describe "Bacon.Bus", ->
     inputSubscribe = input.dispatcher.subscribe
     input.dispatcher.subscribe = (sink) ->
       subscribed++
-      inputSubscribe.call(input, sink)
+      inputSubscribe.call(input.dispatcher, sink)
     bus.plug(input)
     dispose = bus.onValue(=>)
     input.end()
@@ -111,7 +111,7 @@ describe "Bacon.Bus", ->
     busB.end()
     busA.push('foo')
     expect(failed).to.equal(false)
-  
+
   it "respects end() calls before subscribers", ->
     failed = false
     bus = new Bacon.Bus()

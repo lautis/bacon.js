@@ -4,7 +4,6 @@
 function Dispatcher(_subscribe, _handleEvent) {
   this._subscribe = _subscribe;
   this._handleEvent = _handleEvent;
-  this.subscribe = _.bind(this.subscribe, this);
   this.handleEvent = _.bind(this.handleEvent, this);
   this.pushing = false;
   this.ended = false;

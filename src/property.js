@@ -7,10 +7,9 @@
 // build-dependencies: helpers
 // build-dependencies: _
 
-function PropertyDispatcher(property, subscribe, handleEvent) {
+function PropertyDispatcher(property, subscribe, handleEvent) {
   Dispatcher.call(this, subscribe, handleEvent);
   this.property = property;
-  this.subscribe = _.bind(this.subscribe, this);
   this.current = None;
   this.currentValueRootId = undefined;
   this.propertyEnded = false;
@@ -97,7 +96,8 @@ extend(Property.prototype, {
   },
 
   withHandler(handler) {
-    return new Property(new Bacon.Desc(this, "withHandler", [handler]), this.dispatcher.subscribe, handler);
+    const subscribe = (sink) => this.dispatcher.subscribe(sink);
+    return new Property(new Bacon.Desc(this, "withHandler", [handler]), subscribe, handler);
   },
 
   toProperty() {

@@ -75,7 +75,8 @@ extend(EventStream.prototype, {
   toEventStream() { return this; },
 
   withHandler(handler) {
-    return new EventStream(new Bacon.Desc(this, "withHandler", [handler]), this.dispatcher.subscribe, handler);
+    const subscribe = (sink) => this.dispatcher.subscribe(sink);
+    return new EventStream(new Bacon.Desc(this, "withHandler", [handler]), subscribe, handler);
   }
 });
 
