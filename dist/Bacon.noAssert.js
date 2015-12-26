@@ -972,7 +972,7 @@
     }
     extend(CompositeUnsubscribe.prototype, {
         add: function (subscription) {
-            var _this2 = this;
+            var _this = this;
             if (this.unsubscribed) {
                 return;
             }
@@ -980,12 +980,12 @@
             var unsub = nop;
             this.starting.push(subscription);
             var unsubMe = function () {
-                if (_this2.unsubscribed) {
+                if (_this.unsubscribed) {
                     return;
                 }
                 ended = true;
-                _this2.remove(unsub);
-                return _.remove(subscription, _this2.starting);
+                _this.remove(unsub);
+                return _.remove(subscription, _this.starting);
             };
             unsub = subscription(this.unsubscribe, unsubMe);
             if (!(this.unsubscribed || ended)) {
@@ -1031,7 +1031,6 @@
     function Dispatcher(_subscribe, _handleEvent) {
         this._subscribe = _subscribe;
         this._handleEvent = _handleEvent;
-        this.handleEvent = _.bind(this.handleEvent, this);
         this.pushing = false;
         this.ended = false;
         this.prevError = undefined;
@@ -1039,12 +1038,19 @@
         this.subscriptions = [];
         this.queue = [];
     }
+    Dispatcher.prototype._isDispatcher = true;
     Dispatcher.prototype.hasSubscribers = function () {
         return this.subscriptions.length > 0;
     };
     Dispatcher.prototype.removeSub = function (subscription) {
         this.subscriptions = _.without(subscription, this.subscriptions);
         return this.subscriptions;
+    };
+    Dispatcher.prototype.unsubscribe = function (subscription) {
+        this.removeSub(subscription);
+        if (!this.hasSubscribers()) {
+            return this.unsubscribeFromSource();
+        }
     };
     Dispatcher.prototype.push = function (event) {
         if (event.isEnd()) {
@@ -1058,7 +1064,7 @@
             var len = tmp.length;
             for (var i = 0; i < len; i++) {
                 var sub = tmp[i];
-                var reply = sub.sink(event);
+                var reply = sub.handleEvent(event);
                 if (reply === Bacon.noMore || event.isEnd()) {
                     this.removeSub(sub);
                 }
@@ -1104,30 +1110,49 @@
         }
     };
     Dispatcher.prototype.unsubscribeFromSource = function () {
-        if (this.unsubSrc) {
+        if (this.unsubSrc === true) {
+            this._subscribe.unsubscribe(this);
+        } else if (this.unsubSrc) {
             this.unsubSrc();
         }
         this.unsubSrc = undefined;
     };
+    Dispatcher.prototype._toSubscription = function (sink) {
+        if (sink._isDispatcher) {
+            return sink;
+        } else if (sink._isSubscription) {
+            return sink;
+        } else {
+            return {
+                _isSubscription: true,
+                handleEvent: sink
+            };
+        }
+    };
     Dispatcher.prototype.subscribe = function (sink) {
-        var subscription;
+        var _this2 = this;
+        var internal = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
+        var subscription = this._toSubscription(sink);
         if (this.ended) {
-            sink(endEvent());
+            subscription.handleEvent(endEvent());
             return nop;
         } else {
-            subscription = { sink: sink };
             this.subscriptions.push(subscription);
             if (this.subscriptions.length === 1) {
-                this.unsubSrc = this._subscribe(this.handleEvent);
+                if (this._subscribe._isDispatcher) {
+                    this._subscribe.subscribe(this, true);
+                    this.unsubSrc = true;
+                } else {
+                    this.unsubSrc = this._subscribe(_.bind(this.handleEvent, this));
+                }
             }
-            return function (_this) {
+            if (internal) {
+                return nop;
+            } else {
                 return function () {
-                    _this.removeSub(subscription);
-                    if (!_this.hasSubscribers()) {
-                        return _this.unsubscribeFromSource();
-                    }
+                    return _this2.unsubscribe(subscription);
                 };
-            }(this);
+            }
         }
     };
     Bacon.Dispatcher = Dispatcher;
@@ -1135,12 +1160,14 @@
         if (!(this instanceof EventStream)) {
             return new EventStream(desc, subscribe, handler);
         }
-        if (_.isFunction(desc)) {
+        if (_.isFunction(desc) || desc._isDispatcher) {
             handler = subscribe;
             subscribe = desc;
             desc = Desc.empty;
         }
         Observable.call(this, desc);
+        if (!subscribe._isDispatcher) {
+        }
         this.dispatcher = new Dispatcher(subscribe, handler);
         registerObs(this);
     }
@@ -1204,11 +1231,7 @@
             return this;
         },
         withHandler: function (handler) {
-            var _this3 = this;
-            var subscribe = function (sink) {
-                return _this3.dispatcher.subscribe(sink);
-            };
-            return new EventStream(new Bacon.Desc(this, 'withHandler', [handler]), subscribe, handler);
+            return new EventStream(new Bacon.Desc(this, 'withHandler', [handler]), this.dispatcher, handler);
         }
     });
     Bacon.EventStream = EventStream;
@@ -1464,18 +1487,20 @@
             }
             return Dispatcher.prototype.push.call(this, event);
         },
-        maybeSubSource: function (sink, reply) {
+        maybeSubSource: function (subscription, reply, internal) {
             if (reply === Bacon.noMore) {
                 return nop;
             } else if (this.propertyEnded) {
-                sink(endEvent());
+                subscription.handleEvent(endEvent());
                 return nop;
             } else {
-                return Dispatcher.prototype.subscribe.call(this, sink);
+                return Dispatcher.prototype.subscribe.call(this, subscription, internal);
             }
         },
         subscribe: function (sink) {
-            var _this4 = this;
+            var _this3 = this;
+            var internal = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
+            var subscription = this._toSubscription(sink);
             var initSent = false;
             var reply = Bacon.more;
             if (this.current.isDefined && (this.hasSubscribers() || this.propertyEnded)) {
@@ -1483,25 +1508,27 @@
                 var valId = this.currentValueRootId;
                 if (!this.propertyEnded && valId && dispatchingId && dispatchingId !== valId) {
                     UpdateBarrier.whenDoneWith(this.property, function () {
-                        if (_this4.currentValueRootId === valId) {
-                            return sink(initialEvent(_this4.current.get().value()));
+                        if (_this3.currentValueRootId === valId) {
+                            return subscription.handleEvent(initialEvent(_this3.current.get().value()));
                         }
                     });
-                    return this.maybeSubSource(sink, reply);
+                    return this.maybeSubSource(subscription, reply, internal);
                 } else {
                     UpdateBarrier.inTransaction(undefined, this, function () {
-                        reply = sink(initialEvent(this.current.get().value()));
+                        reply = subscription.handleEvent(initialEvent(this.current.get().value()));
                         return reply;
                     }, []);
-                    return this.maybeSubSource(sink, reply);
+                    return this.maybeSubSource(subscription, reply, internal);
                 }
             } else {
-                return this.maybeSubSource(sink, reply);
+                return this.maybeSubSource(subscription, reply, internal);
             }
         }
     });
     function Property(desc, subscribe, handler) {
         Observable.call(this, desc);
+        if (!subscribe._isDispatcher) {
+        }
         this.dispatcher = new PropertyDispatcher(this, subscribe, handler);
         registerObs(this);
     }
@@ -1509,9 +1536,9 @@
     extend(Property.prototype, {
         _isProperty: true,
         changes: function () {
-            var _this5 = this;
+            var _this4 = this;
             return new EventStream(new Bacon.Desc(this, 'changes', []), function (sink) {
-                return _this5.dispatcher.subscribe(function (event) {
+                return _this4.dispatcher.subscribe(function (event) {
                     if (!event.isInitial()) {
                         return sink(event);
                     }
@@ -1519,19 +1546,15 @@
             });
         },
         withHandler: function (handler) {
-            var _this6 = this;
-            var subscribe = function (sink) {
-                return _this6.dispatcher.subscribe(sink);
-            };
-            return new Property(new Bacon.Desc(this, 'withHandler', [handler]), subscribe, handler);
+            return new Property(new Bacon.Desc(this, 'withHandler', [handler]), this.dispatcher, handler);
         },
         toProperty: function () {
             return this;
         },
         toEventStream: function () {
-            var _this7 = this;
+            var _this5 = this;
             return new EventStream(new Bacon.Desc(this, 'toEventStream', []), function (sink) {
-                return _this7.dispatcher.subscribe(function (event) {
+                return _this5.dispatcher.subscribe(function (event) {
                     if (event.isInitial()) {
                         event = event.toNext();
                     }
@@ -1811,10 +1834,10 @@
                 }
             },
             schedule: function () {
-                var _this8 = this;
+                var _this6 = this;
                 if (!this.scheduled) {
                     return this.scheduled = delay(function () {
-                        return _this8.flush();
+                        return _this6.flush();
                     });
                 }
             }
@@ -1827,9 +1850,9 @@
             };
         }
         return withDesc(new Bacon.Desc(this, 'buffer', []), this.withHandler(function (event) {
-            var _this9 = this;
+            var _this7 = this;
             buffer.push = function (event) {
-                return _this9.push(event);
+                return _this7.push(event);
             };
             if (event.isError()) {
                 reply = this.push(event);
@@ -2050,13 +2073,13 @@
             return this.unsubAll;
         },
         guardedSink: function (input) {
-            var _this10 = this;
+            var _this8 = this;
             return function (event) {
                 if (event.isEnd()) {
-                    _this10.unsubscribeInput(input);
+                    _this8.unsubscribeInput(input);
                     return Bacon.noMore;
                 } else {
-                    return _this10.sink(event);
+                    return _this8.sink(event);
                 }
             };
         },
@@ -2078,7 +2101,7 @@
             }
         },
         plug: function (input) {
-            var _this11 = this;
+            var _this9 = this;
             if (this.ended) {
                 return;
             }
@@ -2088,7 +2111,7 @@
                 this.subscribeInput(sub);
             }
             return function () {
-                return _this11.unsubscribeInput(input);
+                return _this9.unsubscribeInput(input);
             };
         },
         end: function () {
@@ -2326,7 +2349,7 @@
         }));
     };
     Bacon.Observable.prototype.scan = function (seed, f) {
-        var _this12 = this;
+        var _this10 = this;
         var resultProperty;
         f = toCombinator(f);
         var acc = toOption(seed);
@@ -2350,7 +2373,7 @@
                     });
                 }
             };
-            unsub = _this12.dispatcher.subscribe(function (event) {
+            unsub = _this10.dispatcher.subscribe(function (event) {
                 if (event.hasValue()) {
                     if (initHandled && event.isInitial()) {
                         return Bacon.more;
@@ -2785,15 +2808,15 @@
     };
     Bacon.$ = {};
     Bacon.$.asEventStream = function (eventName, selector, eventTransformer) {
-        var _this13 = this;
+        var _this11 = this;
         if (_.isFunction(selector)) {
             eventTransformer = selector;
             selector = undefined;
         }
         return withDesc(new Bacon.Desc(this.selector || this, 'asEventStream', [eventName]), Bacon.fromBinder(function (handler) {
-            _this13.on(eventName, selector, handler);
+            _this11.on(eventName, selector, handler);
             return function () {
-                return _this13.off(eventName, selector, handler);
+                return _this11.off(eventName, selector, handler);
             };
         }, eventTransformer));
     };
@@ -3077,7 +3100,7 @@
         });
     };
     Observable.prototype.firstToPromise = function (PromiseCtr) {
-        var _this14 = this;
+        var _this12 = this;
         if (typeof PromiseCtr !== 'function') {
             if (typeof Promise === 'function') {
                 PromiseCtr = Promise;
@@ -3086,7 +3109,7 @@
             }
         }
         return new PromiseCtr(function (resolve, reject) {
-            return _this14.subscribe(function (event) {
+            return _this12.subscribe(function (event) {
                 if (event.hasValue()) {
                     resolve(event.value());
                 }
