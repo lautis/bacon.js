@@ -1,4 +1,4 @@
-// build-dependencies: compositeunsubscribe, eventstream
+// build-dependencies: compositeunsubscribe, eventstream, _
 // build-dependencies: updatebarrier
 
 Bacon.when = function() {
@@ -89,23 +89,9 @@ Bacon.when = function() {
             p = pats[i1];
             if (match(p)) {
               //console.log "match", p
-              var events = ((() => {
-                var result = [];
-                for (var i2 = 0, i; i2 < p.ixs.length; i2++) {
-                  i = p.ixs[i2];
-                  result.push(sources[i.index].consume());
-                }
-                return result;
-              })());
+              var events = _.map((i) => sources[i.index].consume(), p.ixs);
               reply = sink(trigger.e.apply(function() {
-                var values = ((() => {
-                  var result = [];
-                  for (var i2 = 0, event; i2 < events.length; i2++) {
-                    event = events[i2];
-                    result.push(event.value());
-                  }
-                  return result;
-                })());
+                var values = _.map((event) => event.value(), events);
                 //console.log "flushing values", values
                 return p.f(...values);
               }));
@@ -162,14 +148,7 @@ Bacon.when = function() {
     };
     };
 
-    return new Bacon.CompositeUnsubscribe((() => {
-      var result = [];
-      for (var i1 = 0, s; i1 < sources.length; i1++) {
-        s = sources[i1];
-        result.push(part(s));
-      }
-      return result;
-    })());
+    return new Bacon.CompositeUnsubscribe(_.map(part, sources));
   });
   return resultStream;
 };

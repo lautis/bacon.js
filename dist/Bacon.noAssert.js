@@ -1338,24 +1338,14 @@
                             for (var i1 = 0, p; i1 < pats.length; i1++) {
                                 p = pats[i1];
                                 if (match(p)) {
-                                    var events = function () {
-                                        var result = [];
-                                        for (var i2 = 0, i; i2 < p.ixs.length; i2++) {
-                                            i = p.ixs[i2];
-                                            result.push(sources[i.index].consume());
-                                        }
-                                        return result;
-                                    }();
+                                    var events = _.map(function (i) {
+                                        return sources[i.index].consume();
+                                    }, p.ixs);
                                     reply = sink(trigger.e.apply(function () {
                                         var _p;
-                                        var values = function () {
-                                            var result = [];
-                                            for (var i2 = 0, event; i2 < events.length; i2++) {
-                                                event = events[i2];
-                                                result.push(event.value());
-                                            }
-                                            return result;
-                                        }();
+                                        var values = _.map(function (event) {
+                                            return event.value();
+                                        }, events);
                                         return (_p = p).f.apply(_p, values);
                                     }));
                                     if (triggers.length) {
@@ -1414,14 +1404,7 @@
                     });
                 };
             };
-            return new Bacon.CompositeUnsubscribe(function () {
-                var result = [];
-                for (var i1 = 0, s; i1 < sources.length; i1++) {
-                    s = sources[i1];
-                    result.push(part(s));
-                }
-                return result;
-            }());
+            return new Bacon.CompositeUnsubscribe(_.map(part, sources));
         });
         return resultStream;
     };
@@ -1457,14 +1440,9 @@
         if (streams.length === 1 && isArray(streams[0])) {
             streams = streams[0];
         }
-        var sources = function () {
-            var result = [];
-            for (var i = 0, s; i < streams.length; i++) {
-                s = streams[i];
-                result.push(new BufferingSource(s));
-            }
-            return result;
-        }();
+        var sources = _.map(function (stream) {
+            return new BufferingSource(stream);
+        }, streams);
         return withDesc(new Bacon.Desc(Bacon, 'groupSimultaneous', streams), Bacon.when(sources, function () {
             for (var _len6 = arguments.length, xs = Array(_len6), _key6 = 0; _key6 < _len6; _key6++) {
                 xs[_key6] = arguments[_key6];
@@ -1654,14 +1632,9 @@
             }
         }
         if (streams.length) {
-            var sources = function () {
-                var result = [];
-                for (var i = 0, s; i < streams.length; i++) {
-                    s = streams[i];
-                    result.push(new Source(s, true));
-                }
-                return result;
-            }();
+            var sources = _.map(function (stream) {
+                return new Source(stream, true);
+            }, streams);
             return withDesc(new Bacon.Desc(Bacon, 'combineAsArray', streams), Bacon.when(sources, function () {
                 for (var _len9 = arguments.length, xs = Array(_len9), _key9 = 0; _key9 < _len9; _key9++) {
                     xs[_key9] = arguments[_key9];
@@ -2764,14 +2737,9 @@
                         if (!onHold) {
                             var toSend = bufferedValues;
                             bufferedValues = [];
-                            return function () {
-                                var result = [];
-                                for (var i = 0, value; i < toSend.length; i++) {
-                                    value = toSend[i];
-                                    result.push(sink(nextEvent(value)));
-                                }
-                                return result;
-                            }();
+                            return _.map(function (value) {
+                                return sink(nextEvent(value));
+                            }, toSend);
                         }
                     } else if (event.isEnd()) {
                         return endIfBothEnded(unsubMe);

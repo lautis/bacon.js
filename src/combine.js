@@ -11,15 +11,8 @@ Bacon.combineAsArray = function() {
     }
   }
   if (streams.length) {
-    var sources = (() => {
-      var result = [];
-      for (var i = 0, s; i < streams.length; i++) {
-        s = streams[i];
-        result.push(new Source(s, true));
-      }
-      return result;
-    })();
-    return withDesc(new Bacon.Desc(Bacon, "combineAsArray", streams), Bacon.when(sources, (function(...xs) { return xs; })).toProperty());
+    var sources = _.map((stream) => new Source(stream, true), streams);
+    return withDesc(new Bacon.Desc(Bacon, "combineAsArray", streams), Bacon.when(sources, (...xs) => xs).toProperty());
   } else {
     return Bacon.constant([]);
   }

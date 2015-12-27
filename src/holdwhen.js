@@ -22,14 +22,7 @@ Bacon.EventStream.prototype.holdWhen = function(valve) {
           if (!onHold) {
             var toSend = bufferedValues;
             bufferedValues = [];
-            return (() => {
-              var result = [];
-              for (var i = 0, value; i < toSend.length; i++) {
-                value = toSend[i];
-                result.push(sink(nextEvent(value)));
-              }
-              return result;
-            })();
+            return _.map((value) => sink(nextEvent(value)), toSend);
           }
         } else if (event.isEnd()) {
           return endIfBothEnded(unsubMe);
