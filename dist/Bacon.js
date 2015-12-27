@@ -1244,6 +1244,9 @@ Dispatcher.prototype.subscribe = function (sink) {
         this.unsubSrc = true;
       } else {
         this.unsubSrc = this._subscribe(_.bind(this.handleEvent, this));
+        if (this.unsubSrc && !this.unsubSrc.unsubscribe) {
+          assertFunction(this.unsubSrc);
+        }
       }
     }
 
