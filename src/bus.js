@@ -7,7 +7,6 @@ function Bus() {
 
   this.unsubAll = _.bind(this.unsubAll, this);
   this.subscribeAll = _.bind(this.subscribeAll, this);
-  this.guardedSink = _.bind(this.guardedSink, this);
 
   this.sink = undefined;
   this.subscriptions = [];
