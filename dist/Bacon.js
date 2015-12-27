@@ -2177,13 +2177,10 @@ function Bus() {
     return new Bus();
   }
 
-  this.unsubAll = _.bind(this.unsubAll, this);
-  this.subscribeAll = _.bind(this.subscribeAll, this);
-
   this.sink = undefined;
   this.subscriptions = [];
   this.ended = false;
-  EventStream.call(this, new Bacon.Desc(Bacon, "Bus", []), this.subscribeAll);
+  EventStream.call(this, new Bacon.Desc(Bacon, "Bus", []), _.bind(this.subscribeAll, this));
 }
 
 inherit(Bus, EventStream);
@@ -2209,7 +2206,7 @@ extend(Bus.prototype, {
         this.subscribeInput(subscription);
       }
     }
-    return this.unsubAll;
+    return _.bind(this.unsubAll, this);
   },
 
   guardedSink: function (input) {
@@ -2251,7 +2248,9 @@ extend(Bus.prototype, {
     if (this.ended) {
       return;
     }
-    var sub = { input: input };
+    var sub = {
+      input: input
+    };
     this.subscriptions.push(sub);
     if (typeof this.sink !== "undefined") {
       this.subscribeInput(sub);
