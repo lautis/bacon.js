@@ -8,11 +8,11 @@ describe "Bacon.constant", ->
   it "ignores unsubscribe", ->
     Bacon.constant("lol").onValue(=>)()
   describe "provides same value to all listeners", ->
-    c = Bacon.constant("lol")
-    expectPropertyEvents((-> c), ["lol"])
+    expectPropertyEvents((-> Bacon.constant("lol")), ["lol"])
+
     it "check check", ->
       f = mockFunction()
-      c.onValue(f)
+      Bacon.constant("lol").onValue(f)
       f.verify("lol")
   it "provides same value to all listeners, when mapped (bug fix)", ->
     c = map(Bacon.constant("lol"), id)

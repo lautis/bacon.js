@@ -1,15 +1,17 @@
 testLiftedCallback = (src, liftedCallback) ->
-  input = [
-    Bacon.constant('a')
-    'x'
-    Bacon.constant('b').toProperty()
-    'y'
-  ]
   output = ['a', 'x', 'b', 'y']
   expectStreamEvents(
-    -> liftedCallback(src, input...)
+    ->
+      input = [
+        Bacon.constant('a')
+        'x'
+        Bacon.constant('b').toProperty()
+        'y'
+      ]
+      liftedCallback(src, input...)
     [output]
   )
+  input = null
 
 
 describe "Bacon.fromCallback", ->
@@ -33,9 +35,9 @@ describe "Bacon.fromCallback", ->
   describe "supports object, methodName, partial application", ->
     expectStreamEvents(
       ->
-        src = { 
+        src = {
                 "go": (param, callback) -> callback(param + " " + this.name)
-                "name": "bob" 
+                "name": "bob"
               }
         stream = Bacon.fromCallback(src, "go", "hello")
       ["hello bob"])
@@ -69,13 +71,11 @@ describe "Bacon.fromNodeCallback", ->
   describe "supports object, methodName, partial application", ->
     expectStreamEvents(
       ->
-        src = { 
+        src = {
                 "go": (param, callback) -> callback(null, param + " " + this.name)
-                "name": "bob" 
+                "name": "bob"
               }
         stream = Bacon.fromNodeCallback(src, "go", "hello")
       ["hello bob"])
   it "toString", ->
     expect(Bacon.fromNodeCallback((->), "lol").toString()).to.equal("Bacon.fromNodeCallback(function,lol)")
-
-

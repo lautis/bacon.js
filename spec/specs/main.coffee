@@ -33,11 +33,15 @@ describe "Integration tests", ->
       ["aa", "bb", "cc"])
   describe "Property.skipDuplicates", ->
     describe "Doesn't skip initial value (bug fix #211)", ->
-      b = new Bacon.Bus()
-      p = b.toProperty()
-      p.onValue -> # force property update
-      s = p.skipDuplicates()
-      b.push 'foo'
+      s = null
+      before ->
+        b = new Bacon.Bus()
+        p = b.toProperty()
+        p.onValue -> # force property update
+        s = p.skipDuplicates()
+        b.push 'foo'
+      after ->
+        s = null
 
       describe "series 1", ->
         expectPropertyEvents((-> s.take(1)), ["foo"])
@@ -45,6 +49,7 @@ describe "Integration tests", ->
         expectPropertyEvents((-> s.take(1)), ["foo"])
       describe "series 3", ->
         expectPropertyEvents((-> s.take(1)), ["foo"])
+
   describe "EventStream.skipDuplicates", ->
     it "Drops duplicates with subscribers with non-overlapping subscription time (#211)", ->
       b = new Bacon.Bus()
@@ -349,21 +354,21 @@ describe "Integration tests", ->
           expect(values).to.deep.equal(expected)
         expect(values).to.deep.equal(expected)
 
-    verifyWhileDispatching "with combineAsArray", 
+    verifyWhileDispatching "with combineAsArray",
       (-> Bacon.combineAsArray([Bacon.constant(1)])),
       [[1]]
-    verifyWhileDispatching "with combineAsArray.startWith", 
+    verifyWhileDispatching "with combineAsArray.startWith",
         (->
           a = Bacon.constant("lolbal")
-          Bacon.combineAsArray([a, a]).map("right").startWith("wrong")), 
+          Bacon.combineAsArray([a, a]).map("right").startWith("wrong")),
         ["right"]
-    verifyWhileDispatching "with stream.startWith", 
-      (-> later(1).startWith(0)), 
+    verifyWhileDispatching "with stream.startWith",
+      (-> later(1).startWith(0)),
       [0]
-    verifyWhileDispatching "with combineAsArray.changes.startWith", 
+    verifyWhileDispatching "with combineAsArray.changes.startWith",
       (->
         a = Bacon.constant("lolbal")
-        Bacon.combineAsArray([a, a]).changes().startWith("right")), 
+        Bacon.combineAsArray([a, a]).changes().startWith("right")),
       ["right"]
     verifyWhileDispatching "with flatMap", (->
         a = Bacon.constant("lolbal")
@@ -428,7 +433,7 @@ describe "Integration tests", ->
           [0, 1])
     describe "delayed bounce in case Property ended (bug fix)", ->
       expectStreamEvents(
-        -> 
+        ->
           bus = new Bacon.Bus()
           root = Bacon.once(0).toProperty()
           root.onValue ->

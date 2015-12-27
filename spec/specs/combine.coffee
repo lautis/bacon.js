@@ -72,6 +72,9 @@ describe "Bacon.combineAsArray", ->
       prop = Bacon.constant(1)
       Bacon.combineAsArray(prop).subscribe (x) ->
         event = x if x.hasValue()
+    after ->
+      event = null
+
     it "is output as Initial event", ->
       expect(event.isInitial()).to.equal(true)
   describe "combines properties and latest values of streams, into a Property having arrays as values", ->
@@ -120,7 +123,7 @@ describe "Bacon.combineAsArray", ->
     [[1,2,3]])
   describe "works with synchronous sources and flatMap (#407)", ->
     expectStreamEvents(
-      -> 
+      ->
           once(123)
           .flatMap ->
               Bacon.combineAsArray(once(1), once(2), 3)

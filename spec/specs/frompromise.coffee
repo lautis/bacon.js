@@ -23,6 +23,11 @@ describe "Bacon.fromPromise", ->
     _ = Bacon._
     nop = ->
 
+    after ->
+      promise = undefined
+      success = undefined
+      fail = undefined
+
     it "should produce value and end on success", ->
       events = []
       Bacon.fromPromise(promise).subscribe( (e) => events.push(e))
@@ -97,6 +102,10 @@ describe "Bacon.fromPromise", ->
             done: -> chainEnd = true
         }
         stream = Bacon.fromPromise promise
+
+      afterEach ->
+        promise = null
+        stream = null
 
       it "should not swallow .onValue() errors", ->
         stream.onValue (e) -> throw new Error("fail value")

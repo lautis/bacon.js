@@ -88,7 +88,7 @@ verifyPSingleSubscriber = (srcF, expectedEvents, extraCheck) ->
 
 verifyPLateEval = (srcF, expectedEvents) ->
   verifyPropertyWith "(late eval)", srcF, expectedEvents, (src, events, done) ->
-    src.subscribe (event) -> 
+    src.subscribe (event) ->
       if event.isEnd()
         done()
       else
@@ -97,7 +97,7 @@ verifyPLateEval = (srcF, expectedEvents) ->
 verifyPIntermittentSubscriber = (srcF, expectedEvents) ->
   verifyPropertyWith "(with intermittent subscriber)", srcF, expectedEvents, (src, events, done) ->
     take(1, src).subscribe(->)
-    src.subscribe (event) -> 
+    src.subscribe (event) ->
       if event.isEnd()
         done()
       else
@@ -105,7 +105,7 @@ verifyPIntermittentSubscriber = (srcF, expectedEvents) ->
 
 verifyPSwitching = (srcF, expectedEvents) ->
   verifyPropertyWith "(switching subscribers)", srcF, expectedEvents, (src, events, done) ->
-    src.subscribe (event) -> 
+    src.subscribe (event) ->
       if event.isEnd()
         done()
       else
@@ -144,6 +144,11 @@ verifyPSwitchingAggressively = (srcF, expectedEvents, done) ->
               gotMine = true
               events.push(toValue(event))
       unsub = src.subscribe(newSink())
+
+    after ->
+      src = null
+      events = null
+
     it "outputs expected value in order", ->
       expect(events).to.deep.equal(toValues(expectedEvents))
 
@@ -151,10 +156,15 @@ verifyPropertyWith = (description, srcF, expectedEvents, collectF, extraCheck) -
   describe description, ->
     src = null
     events = []
-    before -> 
+    before ->
       src = srcF()
     before (done) ->
       collectF(src, events, done)
+
+    after ->
+      src = null
+      events = null
+
     it "is a Property", ->
       expect(src instanceof Bacon.Property).to.deep.equal(true)
     it "outputs expected events in order", ->
@@ -167,7 +177,7 @@ verifyPropertyWith = (description, srcF, expectedEvents, collectF, extraCheck) -
 
 verifyLateEval = (srcF, expectedEvents) ->
   verifyStreamWith "(late eval)", srcF, expectedEvents, (src, events, done) ->
-    src.subscribe (event) -> 
+    src.subscribe (event) ->
       if event.isEnd()
         done()
       else
@@ -177,7 +187,7 @@ verifyLateEval = (srcF, expectedEvents) ->
 
 verifySingleSubscriber = (srcF, expectedEvents) ->
   verifyStreamWith "(single subscriber)", srcF, expectedEvents, (src, events, done) ->
-    src.subscribe (event) -> 
+    src.subscribe (event) ->
       if event.isEnd()
         done()
       else
@@ -187,7 +197,7 @@ verifySingleSubscriber = (srcF, expectedEvents) ->
 # get each event with new subscriber
 verifySwitching = (srcF, expectedEvents, done) ->
   verifyStreamWith "(switching subscribers)", srcF, expectedEvents, (src, events, done) ->
-    newSink = -> 
+    newSink = ->
       (event) ->
         if event.isEnd()
           done()
@@ -241,8 +251,17 @@ verifyStreamWith = (description, srcF, expectedEvents, collectF) ->
     before ->
       src = srcF()
       expect(src instanceof Bacon.EventStream).to.equal(true, "is an EventStream")
+
+    after ->
+      src = null
+      events = null
+
     before (done) ->
       collectF(src, events, done)
+
+    after ->
+      src = null
+      events = null
     it "outputs expected value in order", ->
       expect(toValues(events)).to.deep.equal(toValues(expectedEvents))
     it "the stream is exhausted", ->
@@ -257,6 +276,12 @@ verifySwitchingAggressively = (srcF, expectedEvents, done) ->
     before ->
       src = srcF()
       expect(src instanceof Bacon.EventStream).to.equal(true, "is an EventStream")
+
+    after ->
+      src = null
+      events = null
+      unsub = null
+
     before (done) ->
       newSink = ->
         unsub = null
